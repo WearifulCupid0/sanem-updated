@@ -1,0 +1,78 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: sanem-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: sanem
+      MYSQL_USER: ${DB_USER:-sanem}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-sanem123}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/script-create-tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=tcp -h 127.0.0.1 -P 3306 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks: [sanem-network]
+
+  backend:
+    build: ./backend
+    container_name: sanem-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: sanem
+      DB_USER: ${DB_USER:-sanem}
+      DB_PASSWORD: ${DB_PASSWORD:-sanem123}
+      JWT_SECRET: ${JWT_SECRET:-sanem-local-development-key-change-before-production-2026}
+      CORS_ALLOWED_ORIGINS: https://${SANEM_DOMAIN:-localhost}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks: [sanem-network]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: /api
+    container_name: sanem-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: /api
+    depends_on:
+      - backend
+    networks: [sanem-network]
+
+  https-proxy:
+    image: caddy:2-alpine
+    container_name: sanem-https-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SANEM_DOMAIN: ${SANEM_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    networks: [sanem-network]
+
+volumes:
+  mysql_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  sanem-network:
+    driver: bridge

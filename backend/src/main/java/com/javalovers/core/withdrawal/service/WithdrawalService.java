@@ -1,0 +1,298 @@
+package com.javalovers.core.withdrawal.service;
+
+import com.javalovers.core.inventory.service.InventoryService;
+import com.javalovers.core.inventory.domain.enums.TransactionType;
+import com.javalovers.core.appuser.domain.entity.AppUser;
+import com.javalovers.core.beneficiary.domain.entity.Beneficiary;
+import com.javalovers.core.withdrawal.domain.dto.request.WithdrawalFilterDTO;
+import com.javalovers.core.withdrawal.domain.dto.request.WithdrawalFormDTO;
+import com.javalovers.core.withdrawal.domain.dto.response.WithdrawalDTO;
+import com.javalovers.core.withdrawal.domain.entity.Withdrawal;
+import com.javalovers.core.withdrawal.mapper.WithdrawalCreateMapper;
+import com.javalovers.core.withdrawal.mapper.WithdrawalDTOMapper;
+import com.javalovers.core.withdrawal.mapper.WithdrawalUpdateMapper;
+import com.javalovers.core.withdrawal.repository.WithdrawalRepository;
+import com.javalovers.core.withdrawal.specification.WithdrawalSpecification;
+import com.javalovers.core.withdrawallimit.service.WithdrawalLimitConfigService;
+import com.javalovers.core.withdrawalreset.service.WithdrawalLimitResetService;
+import com.javalovers.core.beneficiary.service.BeneficiaryService;
+import com.javalovers.core.beneficiarystatus.BeneficiaryStatus;
+import com.javalovers.core.item.service.ItemService;
+import com.javalovers.core.item.domain.entity.Item;
+import com.javalovers.core.itemwithdrawn.domain.entity.ItemWithdrawn;
+import com.javalovers.core.itemwithdrawn.repository.ItemWithdrawnRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class WithdrawalService {
+
+    private final WithdrawalRepository withdrawalRepository;
+    private final WithdrawalCreateMapper withdrawalCreateMapper;
+    private final WithdrawalDTOMapper withdrawalDTOMapper;
+    private final WithdrawalUpdateMapper withdrawalUpdateMapper;
+    private final WithdrawalLimitConfigService limitConfigService;
+    private final BeneficiaryService beneficiaryService;
+    private final ItemService itemService;
+    private final ItemWithdrawnRepository itemWithdrawnRepository;
+    private final WithdrawalLimitResetService withdrawalLimitResetService;
+    private final InventoryService inventoryService;
+    private final EntityManager entityManager;
+
+    public Withdrawal generateWithdrawal(WithdrawalFormDTO withdrawalFormDTO, Beneficiary beneficiary, AppUser attendantUser) {
+        return withdrawalCreateMapper.convert(withdrawalFormDTO, beneficiary, attendantUser);
+    }
+
+    @Transactional
+    public void save (Withdrawal withdrawal, WithdrawalFormDTO withdrawalFormDTO) {
+        validateBeneficiaryStatus(withdrawal);
+
+        // Validar limite antes de processar itens
+        if (withdrawalFormDTO != null && withdrawalFormDTO.items() != null && !withdrawalFormDTO.items().isEmpty()) {
+            validateWithdrawalLimit(withdrawal, withdrawalFormDTO.items());
+        } else {
+            validateWithdrawalLimit(withdrawal);
+        }
+        
+        // Salvar withdrawal primeiro para ter o ID
+        withdrawalRepository.save(withdrawal);
+        
+        // Processar itens após salvar (precisa do ID do withdrawal)
+        if (withdrawalFormDTO != null && withdrawalFormDTO.items() != null && !withdrawalFormDTO.items().isEmpty()) {
+            processWithdrawalItems(withdrawal, withdrawalFormDTO.items());
+        }
+    }
+
+    @Transactional
+    public void save (Withdrawal withdrawal) {
+        validateBeneficiaryStatus(withdrawal);
+        validateWithdrawalLimit(withdrawal);
+
+        withdrawalRepository.save(withdrawal);
+    }
+
+    private void processWithdrawalItems(Withdrawal withdrawal, List<WithdrawalFormDTO.WithdrawalItemDTO> items) {
+        for (WithdrawalFormDTO.WithdrawalItemDTO itemDTO : items) {
+            Item item = itemService.getOrThrowException(itemDTO.itemId());
+
+            inventoryService.processTransaction(
+                item, 
+                (long) itemDTO.quantity(), 
+                TransactionType.WITHDRAWAL_OUT, 
+                withdrawal.getWithdrawalId()
+            );
+
+            // Criar registro de item retirado
+            ItemWithdrawn itemWithdrawn = new ItemWithdrawn();
+            itemWithdrawn.setWithdrawal(withdrawal);
+            itemWithdrawn.setItem(item);
+            itemWithdrawn.setQuantity(itemDTO.quantity());
+            itemWithdrawnRepository.save(itemWithdrawn);
+        }
+    }
+
+    private void validateBeneficiaryStatus(Withdrawal withdrawal) {
+        if (withdrawal.getBeneficiary() == null) {
+            return;
+        }
+
+        BeneficiaryStatus status = withdrawal.getBeneficiary().getBeneficiaryStatus();
+
+        if (status != BeneficiaryStatus.APPROVED) {
+            throw new IllegalStateException("Beneficiário não está aprovado para realizar retirada.");
+        }
+    }
+
+    public void validateWithdrawalLimit(Withdrawal withdrawal) {
+        validateWithdrawalLimit(withdrawal, null);
+    }
+
+    public void validateWithdrawalLimit(Withdrawal withdrawal, List<WithdrawalFormDTO.WithdrawalItemDTO> items) {
+        if (withdrawal.getBeneficiary() == null) return;
+
+        Long beneficiaryId = withdrawal.getBeneficiary().getBeneficiaryId();
+        var beneficiary = beneficiaryService.getOrThrowException(beneficiaryId);
+
+        Integer monthlyLimit = beneficiary.getWithdrawalLimit() != null 
+            ? beneficiary.getWithdrawalLimit() 
+            : limitConfigService.getActiveConfig().getMonthlyItemLimit();
+
+        if (monthlyLimit == null || monthlyLimit <= 0) return;
+
+        int currentWithdrawals = calculateItemsWithdrawnThisMonth(beneficiaryId);
+
+        int itemsInThisWithdrawal = 0;
+        if (items != null && !items.isEmpty()) {
+            itemsInThisWithdrawal = items.stream().mapToInt(WithdrawalFormDTO.WithdrawalItemDTO::quantity).sum();
+        } else {
+            itemsInThisWithdrawal = calculateItemsInWithdrawal(withdrawal);
+        }
+
+        if (currentWithdrawals + itemsInThisWithdrawal > monthlyLimit) {
+            throw new IllegalStateException(
+                String.format("Limite mensal excedido. Retiradas este mês: %d/%d. Tentativa de retirar mais %d itens.",
+                    currentWithdrawals, monthlyLimit, itemsInThisWithdrawal)
+            );
+        }
+    }
+
+    @Transactional
+    public void resetMonthlyLimit(Long beneficiaryId) {
+        beneficiaryService.getOrThrowException(beneficiaryId);
+        withdrawalLimitResetService.resetLimitForBeneficiary(beneficiaryId);
+    }
+
+    private int calculateItemsWithdrawnThisMonth(Long beneficiaryId) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.DAY_OF_MONTH, 1);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+
+        Date startOfMonth = calendar.getTime();
+
+        Date lastManualReset = withdrawalLimitResetService
+                .getLastResetDate(beneficiaryId)
+                .orElse(null);
+
+        Date startDate = startOfMonth;
+
+        if (lastManualReset != null && lastManualReset.after(startOfMonth)) {
+            startDate = lastManualReset;
+        }
+
+        Query query = entityManager.createNativeQuery(
+                "SELECT COALESCE(SUM(iw.quantity), 0) " +
+                "FROM item_withdrawn iw " +
+                "INNER JOIN withdrawal w ON iw.withdrawal_id = w.withdrawal_id " +
+                "WHERE w.beneficiary_id = ? " +
+                "AND w.withdrawal_date >= ? " +
+                "AND w.deleted_at IS NULL " +
+                "AND iw.deleted_at IS NULL"
+        );
+
+        query.setParameter(1, beneficiaryId);
+        query.setParameter(2, startDate);
+
+        Object result = query.getSingleResult();
+        return ((Number) result).intValue();
+    }
+
+    private int calculateItemsInWithdrawal(Withdrawal withdrawal) {
+        if (withdrawal.getWithdrawalId() == null) {
+            // Nova retirada - buscar itens do ItemWithdrawn que ainda não foram salvos
+            // Por enquanto, assumimos que os itens serão adicionados depois
+            // Esta validação será feita no controller quando os itens forem adicionados
+            return 0;
+        }
+
+        Query query = entityManager.createNativeQuery(
+            "SELECT COALESCE(SUM(quantity), 0) FROM item_withdrawn WHERE withdrawal_id = ? AND deleted_at IS NULL"
+        );
+        query.setParameter(1, withdrawal.getWithdrawalId());
+
+        Object result = query.getSingleResult();
+        return ((Number) result).intValue();
+    }
+
+    public int getItemsWithdrawnThisMonth(Long beneficiaryId) {
+        return calculateItemsWithdrawnThisMonth(beneficiaryId);
+    }
+
+    public int getMonthlyLimit() {
+        return limitConfigService.getActiveConfig().getMonthlyItemLimit();
+    }
+
+    public int getMonthlyLimit(Long beneficiaryId) {
+        var beneficiary = beneficiaryService.getOrThrowException(beneficiaryId);
+        return beneficiary.getWithdrawalLimit() != null
+            ? beneficiary.getWithdrawalLimit()
+            : limitConfigService.getActiveConfig().getMonthlyItemLimit();
+    }
+
+    public WithdrawalDTO generateWithdrawalDTO(Withdrawal withdrawal) {
+        return withdrawalDTOMapper.convert(withdrawal);
+    }
+
+    public Withdrawal getOrNull(Long id){
+        return withdrawalRepository.findById(id).orElse(null);
+    }
+
+    public void updateWithdrawal(Withdrawal withdrawal, WithdrawalFormDTO withdrawalFormDTO, Beneficiary beneficiary, AppUser attendantUser) {
+        withdrawalUpdateMapper.update(withdrawal, withdrawalFormDTO, beneficiary, attendantUser);
+    }
+
+    @Transactional
+    public void delete(Withdrawal withdrawal) {
+        Long withdrawalId = withdrawal.getWithdrawalId();
+
+        List<ItemWithdrawn> itemsWithdrawn = entityManager.createQuery(
+            "SELECT iw FROM ItemWithdrawn iw WHERE iw.withdrawal.withdrawalId = :id AND iw.deletedAt IS NULL", 
+            ItemWithdrawn.class
+        ).setParameter("id", withdrawalId).getResultList();
+
+        for (ItemWithdrawn iw : itemsWithdrawn) {
+            inventoryService.processTransaction(
+                iw.getItem(), 
+                (long) iw.getQuantity(), 
+                TransactionType.WITHDRAWAL_REVERSAL, 
+                withdrawalId
+            );
+            
+            iw.softDelete();
+            itemWithdrawnRepository.save(iw);
+        }
+
+        // Soft delete do withdrawal
+        withdrawal.softDelete();
+        withdrawalRepository.save(withdrawal);
+    }
+
+    public List<Withdrawal> list(WithdrawalFilterDTO withdrawalFilterDTO) {
+        Specification<Withdrawal> withdrawalSpecification = generateSpecification(withdrawalFilterDTO);
+        return withdrawalRepository.findAll(withdrawalSpecification);
+    }
+
+    public Page<Withdrawal> list(Pageable pageable, WithdrawalFilterDTO withdrawalFilterDTO) {
+        Specification<Withdrawal> withdrawalSpecification = generateSpecification(withdrawalFilterDTO);
+        return withdrawalRepository.findAll(withdrawalSpecification, pageable);
+    }
+
+    private Specification<Withdrawal> generateSpecification(WithdrawalFilterDTO filter) {
+        if (filter.startDate() != null && filter.endDate() != null && filter.startDate().after(filter.endDate())) {
+            throw new IllegalArgumentException("A data inicial não pode ser posterior à data final.");
+        }
+
+        return (root, query, criteriaBuilder) -> {
+            query.distinct(true);
+
+            return Specification.where(WithdrawalSpecification.isNotDeleted())
+                    .and(WithdrawalSpecification.betweenDates(filter.startDate(), filter.endDate()))
+                    .and(WithdrawalSpecification.hasBeneficiaryName(filter.beneficiaryName()))
+                    .and(WithdrawalSpecification.hasAttendantName(filter.attendantName()))
+                    .and(WithdrawalSpecification.hasItemName(filter.itemName()))
+                    .toPredicate(root, query, criteriaBuilder);
+        };
+    }
+
+    public Page<WithdrawalDTO> generateWithdrawalDTOPage(Page<Withdrawal> withdrawalPage) {
+        return withdrawalPage.map(this::generateWithdrawalDTO);
+    }
+
+    public List<WithdrawalDTO> generateWithdrawalDTOList(List<Withdrawal> withdrawalList) {
+        return withdrawalList.stream().map(withdrawalDTOMapper::convert).toList();
+    }
+
+}

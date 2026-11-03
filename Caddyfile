@@ -1,0 +1,8 @@
+{$SANEM_DOMAIN:localhost} {
+    encode zstd gzip
+
+    @api path /api/*
+    reverse_proxy @api backend:8080
+
+    reverse_proxy frontend:3000
+}

@@ -1,0 +1,736 @@
+/* Container Geral da Página */
+.containerGeral {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin-left: 250px;
+    width: calc(100% - 250px);
+    box-sizing: border-box;
+}
+
+.contentWrapper {
+    flex: 1;
+    width: 100%;
+    padding: 20px 30px;
+    display: flex;
+    flex-direction: column;
+    margin-top: 56px;
+    box-sizing: border-box;
+}
+
+.listContainer {
+    background: transparent;
+    padding: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.pageHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.titulo {
+    text-align: left;
+    font-size: 2rem;
+    color: var(--color-text);
+    margin-bottom: 0;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    position: relative;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow: visible;
+}
+
+.decoracao {
+    width: 80px;
+    height: 6px;
+    background: var(--color-primary);
+    margin: 0 0 25px 0;
+    border-radius: 3px;
+}
+
+.actionsHeader {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.addButton {
+    background: var(--color-primary);
+    color: #fff;
+    padding: 12px;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px 0 rgba(25, 118, 210, 0.2);
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+}
+
+.addButton:hover {
+    background: var(--color-primary-dark);
+    transform: translateY(-1px);
+}
+
+.filtersContainer {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filtersContainer .formGroup {
+    margin-bottom: 0;
+}
+
+.filtersContainer input {
+    width: 100%;
+    height: 42px;
+    padding: 6px 12px;
+    border: 2px solid var(--color-border, #ccc);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.3s;
+    box-sizing: border-box;
+    background: #fff;
+    margin: 0;
+}
+
+.filtersContainer input:focus {
+    outline: none;
+    border-color: var(--color-primary, #1976d2);
+}
+
+.filterGroupDate {
+    width: 150px;
+}
+
+.dateSeparator {
+    font-weight: normal;
+    color: var(--color-text-light, #666);
+    font-size: 1rem;
+}
+
+.filterGroupText {
+    flex: 1;
+    min-width: 180px;
+}
+
+.clearFilterButton {
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    margin-bottom: 0;
+    background: #fff;
+}
+
+/* ========================================== */
+/* DROPDOWN CUSTOMIZADO COM AUTOCOMPLETE      */
+/* ========================================== */
+.filterDropdown {
+    position: absolute;
+    top: calc(100% - 6px);
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 2px solid var(--color-primary, #1976d2);
+    border-top: none; 
+    border-radius: 0 0 8px 8px;
+    background: #fff;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    z-index: 50;
+}
+
+.filterDropdownItem {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border-light, #eee);
+    font-size: 0.95rem;
+    color: var(--color-text);
+    transition: background-color 0.15s ease;
+}
+
+.filterDropdownItem:last-child {
+    border-bottom: none;
+}
+
+.filterDropdownItem:hover {
+    background-color: var(--color-bg-alt, #f0f4f8);
+    color: var(--color-primary);
+}
+
+.filterDropdownItemEmpty {
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    color: #999;
+    font-style: italic;
+    text-align: center;
+}
+
+.selectIcon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    color: var(--color-text-light, #999);
+    pointer-events: none;
+    transition: transform 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.clearIcon {
+    position: absolute;
+    right: 38px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-light, #999);
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+    z-index: 2;
+}
+
+.clearIcon:hover {
+    color: var(--color-error, #dc3545);
+}
+
+@media (max-width: 768px) {
+    .filtersContainer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filterGroupDate, .filterGroupText {
+        width: 100%;
+    }
+    .dateSeparator {
+        text-align: center;
+        margin: 5px 0;
+    }
+}
+
+.tableWrapper {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.dataTable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+}
+
+.dataTable th,
+.dataTable td {
+    text-align: left;
+    padding: 15px 20px;
+    font-size: 0.95rem;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow: visible;
+}
+
+.dataTable th {
+    background-color: var(--color-primary);
+    color: #fff;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.dataTable th:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+.dataTable th:last-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.dataTable tbody tr {
+    background-color: var(--color-bg-alt);
+    transition: background-color 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+}
+
+.dataTable tbody tr:hover {
+    background-color: #f0f4f8;
+}
+
+.dataTable td {
+    color: var(--color-text-light);
+    border-top: none;
+    vertical-align: middle;
+}
+
+.dataTable tbody tr td:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+.dataTable tbody tr td:last-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.actionButtons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.deleteButton {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+    box-shadow: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    cursor: pointer;
+    background: var(--color-error);
+    color: #fff;
+}
+
+.deleteButton:hover:not(:disabled) {
+    background: var(--color-error);
+    filter: brightness(0.9);
+    transform: translateY(-1px);
+}
+
+.deleteButton:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.loadingMessage,
+.errorMessage,
+.noDataMessage {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text-light);
+    background-color: var(--color-bg-alt);
+    border-radius: 8px;
+    margin-top: 20px;
+    border: 1px solid var(--color-border-light);
+    width: 100%;
+}
+.loadingMessage {
+    color: var(--color-primary);
+    background-color: rgba(25, 118, 210, 0.05);
+    border-color: rgba(25, 118, 210, 0.2);
+}
+
+/* Modal Styles */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modalContent {
+    background: var(--color-bg-alt);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease-out;
+    border: 1px solid var(--color-border-light);
+    overflow-y: auto;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modalContent h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0 0 24px 0;
+}
+
+.formSection {
+    margin-bottom: 24px;
+}
+
+.formSection label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.95rem;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+    box-sizing: border-box;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.dropdown {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: #fff;
+    margin-top: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dropdownItem {
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background 0.2s;
+}
+
+.dropdownItem:hover {
+    background: #f5f5f5;
+}
+
+.selectedInfo {
+    margin-top: 15px;
+    padding: 15px;
+    background: #e8f5e9;
+    border-radius: 8px;
+    border: 2px solid #4caf50;
+    font-size: 0.9rem;
+}
+
+/* Área de seleção/criação de itens */
+.itemSelectionContainer {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border-light);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 15px 0;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.divider span {
+    padding: 0 10px;
+    color: #777;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.newItemInputGroup {
+    display: flex;
+    gap: 10px;
+}
+
+.addSecondaryButton {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 0 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.addSecondaryButton:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+}
+
+.addSecondaryButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.selectedItemsContainer {
+    margin-top: 15px;
+}
+
+.selectedItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #fff;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.itemInfo {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.newItemBadge {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.itemControls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quantityButton {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--color-border);
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    
+    color: var(--color-primary)
+}
+
+/* Garante que o ícone SVG herde a cor correta e tenha um tamanho bom */
+.quantityButton svg {
+  display: block;
+  fill: currentColor; /* Obriga o SVG a usar a cor definida acima */
+  width: 12px;
+  height: 12px;
+}
+
+.quantityButton:hover:not(:disabled) {
+    background: var(--color-bg);
+    border-color: var(--color-primary);
+}
+
+.quantityButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.quantity {
+    min-width: 35px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.removeButton {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--color-error);
+    background: #fff;
+    color: var(--color-error);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.removeButton:hover {
+    background: var(--color-error);
+    color: #fff;
+}
+
+.total {
+    margin-top: 15px;
+    padding: 12px;
+    background: #e3f2fd;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.modalActions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border-light);
+}
+
+.cancelButton {
+    padding: 12px 24px;
+    border: 1.5px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancelButton:hover {
+    background: var(--color-bg);
+    border-color: var(--color-border-light);
+}
+
+.submitButton {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.submitButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    background: var(--color-primary-dark);
+}
+
+.submitButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .containerGeral {
+        margin-left: 0;
+        width: 100%;
+    }
+    .actionsHeader {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .addButton {
+        width: 100%;
+    }
+    .dataTable thead {
+        display: none;
+    }
+    .dataTable,
+    .dataTable tbody,
+    .dataTable tr,
+    .dataTable td {
+        display: block;
+        width: 100%;
+    }
+    .dataTable tr {
+        margin-bottom: 15px;
+        border: 1px solid var(--color-border);
+        padding: 15px;
+    }
+    .dataTable td {
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+    }
+    .dataTable td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        width: calc(50% - 20px);
+        text-align: left;
+        font-weight: bold;
+    }
+}
+
+/* Ajustes globais de layout para telas menores. */
+@media (max-width: 768px) {
+  .containerGeral { margin-left: 0 !important; width: 100% !important; }
+  .contentWrapper { margin-left: 0 !important; width: 100% !important; }
+}
